@@ -1236,6 +1236,7 @@ void NVPTXAsmPrinter::emitPTXAddressSpace(unsigned int AddressSpace,
   case llvm::ADDRESS_SPACE_LOCAL:
     O << "local" ;
     break;
+  case llvm::ADDRESS_SPACE_GENERIC:
   case llvm::ADDRESS_SPACE_GLOBAL:
     O << "global" ;
     break;
@@ -1304,10 +1305,12 @@ void NVPTXAsmPrinter::emitPTXGlobalVariable(const GlobalVariable* GVar,
 
   O << ".";
   emitPTXAddressSpace(PTy->getAddressSpace(), O);
-  if (GVar->getAlignment() == 0)
-    O << " .align " << (int) TD->getPrefTypeAlignment(ETy);
-  else
-    O << " .align " << GVar->getAlignment();
+  if (ETy->isSized()) {
+      if (GVar->getAlignment() == 0)
+          O << " .align " << (int) TD->getPrefTypeAlignment(ETy);
+      else
+          O << " .align " << GVar->getAlignment();
+  }
 
   if (ETy->isPrimitiveType() || ETy->isIntegerTy() || isa<PointerType>(ETy)) {
     O << " .";
@@ -1327,7 +1330,7 @@ void NVPTXAsmPrinter::emitPTXGlobalVariable(const GlobalVariable* GVar,
   case Type::StructTyID:
   case Type::ArrayTyID:
   case Type::VectorTyID:
-    ElementSize = TD->getTypeStoreSize(ETy);
+    ElementSize = ETy->isSized() ? TD->getTypeStoreSize(ETy) : 0;
     O << " .b8 " << *Mang->getSymbol(GVar) <<"[" ;
     if (ElementSize) {
       O << itostr(ElementSize) ;
